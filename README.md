@@ -1,2 +1,136 @@
 # BT5_Realtime-Monitor-Alert
-Heloo
+## 1. PHẦN LÝ THUYẾT
+### Docker là gì??
++ Docker là một nền tảng mã nguồn mở cho phép các nhà phát triển tự động hóa việc triển khai, đóng gói và chạy các ứng dụng bên trong các môi trường ảo hóa gọn nhẹ được gọi là Container.
+
+  Khác với ảo hóa truyền thống (Virtual Machines - VM) vốn yêu cầu một hệ điều hành khách (Guest OS) hoàn chỉnh chạy trên một hạ tầng ảo hóa (Hypervisor), Docker sử dụng công nghệ ảo hóa ở cấp độ hệ điều hành (OS-level virtualization). Cụ thể, các Docker Container chia sẻ chung nhân (Kernel) của hệ điều hành máy chủ (Host OS) nhưng hoạt động hoàn toàn độc lập và biệt lập với nhau trong không gian người dùng (User Space).
+
+  Nhờ cơ chế này, Docker giúp loại bỏ hoàn toàn hội chứng "chạy được trên máy tôi nhưng lỗi trên máy máy chủ", đảm bảo ứng dụng hoạt động đồng nhất trên mọi môi trường từ laptop cá nhân, môi trường thử nghiệm cho đến hệ thống triển khai thực tế.
+
+### Các keyword được sử dụng trong docker-compose.yml
+**docker-compose.yml** là file cấu hình định dạng YAML được sử dụng để định nghĩa và quản lý một ứng dụng Docker có nhiều container (Multi-container applications). Dưới đây là các keyword cốt lõi kèm ý nghĩa và ví dụ cụ thể:<br>
+
+
+
+**a. version**  
+- **Ý nghĩa**: Xác định phiên bản định dạng file Docker Compose được sử dụng (ví dụ: 3.8). Việc chỉ định phiên bản giúp Docker Engine biết cách biên dịch các cú pháp và tính năng tương thích trong file.
+- **ví dụ *version : '3.8'***
+
+**b. services**
+- **Ý nghĩa**: Khởi tạo vùng định nghĩa cho các container thành phần trong hệ thống. Mỗi service tương ứng với một container được quản lý cấu hình riêng biệt.
+- **Ví dụ:**
+  *services:  
+  web_app: # Tên service  
+    image: nginx:latest*
+
+**c.image** 
+- **Ý nghĩa** : Chỉ định Docker Image (bản mẫu) được sử dụng để build và chạy container. Image này có thể được kéo về từ một Registry (như Docker Hub) hoặc từ kho lưu trữ nội bộ.
+- **Ví dụ :**  
+  *image: mariadb:10.6*
+
+**d. build**
+- **Ý nghĩa** :Được sử dụng thay thế hoặc kết hợp với image khi bạn muốn Docker tự động xây dựng một Image mới từ một file mã nguồn cấu hình (Dockerfile) nằm trong một thư mục cụ thể thay vì tải Image có sẵn.
+- **Ví dụ:**
+  *build:    
+  context: ./flask_api # Đường dẫn tới thư mục chứa Dockerfile   
+  dockerfile: Dockerfile*
+
+**e.ports**
+- **Ý nghĩa**: Cấu hình ánh xạ cổng (Port Forwarding) giữa Máy chủ (Host) và Container. Cú pháp chuẩn là PORT_MÁY_CHỦ:PORT_CONTAINER. Nó cho phép các thiết bị bên ngoài truy cập vào dịch vụ bên trong container thông qua cổng của máy chủ.
+- **Ví dụ:**
+*ports:     
+  "8080:80" # Truy cập cổng 8080 trên laptop sẽ dẫn vào cổng 80 của container*
+
+- **f. environment**
+- **Ý nghĩa:** Khai báo các biến môi trường (Environment Variables) được truyền vào bên trong container khi khởi động. Thường dùng để cấu hình tham số hệ thống, mật khẩu database, token API...
+- **Ví dụ** :
+  *environment:    
+  MYSQL_ROOT_PASSWORD: admin_secret_password   
+  MYSQL_DATABASE: monitoring_db*   
+
+- **G. volumes**
+- **Ý nghĩa**:Định nghĩa cơ chế lưu trữ dữ liệu bền vững (Data Persistence). Volume giúp gắn kết (mount) một thư mục từ máy chủ vào trong container hoặc tạo một vùng lưu trữ do Docker quản lý, giúp dữ liệu không bị mất đi khi container bị xóa hoặc khởi động lại.
+- **Ví dụ**:
+*volumes:   
+  db_data:/var/lib/mysql # Ánh xạ volume tên db_data vào thư mục data của MariaDB*   
+
+- **H. networks**
+- **Ý nghĩa**: Định nghĩa mạng ảo để kết nối các container với nhau. Các container nằm trong cùng một mạng ảo (network) có thể dễ dàng giao tiếp, phân giải tên miền nội bộ và truyền dữ liệu một cách bảo mật, biệt lập với các mạng bên ngoài.
+- **Ví dụ:**
+  *networks:  
+     backend-net*  
+- **i. depends_on**
+- **Ý nghĩa:** Thiết lập thứ tự khởi động giữa các dịch vụ trong hệ thống. Nếu Service A depends_on Service B, Docker Compose sẽ tự động khởi chạy Service B trước rồi mới khởi chạy Service A.
+- **Ví dụ**
+*depends_on:   
+    mariadb # Khởi động database trước khi chạy ứng dụng Flask API*  
+
+### Ưu điểm khi triển khai ứng dụng sử dụng Docker
+- Tính nhất quán và đồng bộ môi trường: Docker đóng gói toàn bộ mã nguồn, thư viện, biến môi trường và các tệp cấu hình phụ thuộc vào một Container duy nhất. Ứng dụng sẽ chạy giống nhau hoàn toàn trên mọi môi trường (Local, Staging, Production).
+
+- Khởi động siêu tốc và Tiết kiệm tài nguyên: Khác với máy ảo VM phải khởi động cả một hệ điều hành dày đặc mất vài phút, Docker container khởi động chỉ trong vài giây. Container cực kỳ nhẹ vì dùng chung nhân hệ điều hành máy chủ, giúp tối ưu hiệu năng phần cứng tối đa.
+
+- Quản lý biệt lập, an toàn (Isolation): Mỗi container hoạt động trong một môi trường cô lập tuyệt đối. Lỗi ứng dụng hay mã độc ở một container này không thể trực tiếp làm ảnh hưởng hoặc lây lan sang các container khác hay hệ điều hành gốc.
+
+- Dễ dàng mở rộng và bảo trì (Scalability): Thiết kế theo kiến trúc Microservices giúp bạn dễ dàng nâng cấp, thay thế, sửa lỗi hay nhân bản (scale) một dịch vụ cụ thể (như tăng số lượng container Nginx) mà không cần can thiệp hay làm gián đoạn các phần khác của hệ thống.
+
+
+
+### Quy trình triển khai ứng dụng Docker lên máy chủ thật không có Internet
+ Đây là bài toán thực tế vô cùng quan trọng đối với kỹ sư hệ thống (Offline/Air-gapped Deployment). Khi máy chủ đích không thể dùng lệnh docker pull để tải ảnh từ Internet , quy trình xử lý chuẩn gồm 5 bước sau:
+ 
+**Bước 1: Kiểm tra và Đóng gói Image tại máy cá nhân (Có Internet)**
+
+1. Build và chạy thử ứng dụng
+- Đảm bảo toàn bộ ứng dụng đã được **build** và chạy thử nghiệm ổn định trên laptop.  
+- Kiểm tra các container hoạt động đúng chức năng trước khi đóng gói.
+
+---
+
+2. Liệt kê Image hiện có
+- Sử dụng lệnh docker images để liệt kê chính xác các Image và Version đang dùng (ví dụ: nodered/node-red:latest, mariadb:latest).
+
+---
+
+**Bước 2: Xuất (Export) các Docker Image ra file nén (.tar)**
+
+- Sử dụng lệnh docker save để nén các Image thành một file vật lý lưu trên ổ đĩa.
+- *Lệnh thực hiện: docker save -o my_images_backup.tar nodered/node-red:latest mariadb:latest influxdb:1.8 nginx:latest*
+
+
+---
+
+**Bước 3: Sao chép file cài đặt Docker Engine Offline và file nén lên Máy chủ**
+
+- Tải trước các file cài đặt Docker dạng ngoại tuyến (ví dụ các file .deb đối với Ubuntu Server hoặc .rpm đối với CentOS) từ máy có mạng.
+- Sử dụng thiết bị lưu trữ ngoại vi (USB, ổ cứng di động) hoặc giao thức truyền file nội bộ (SFTP/SCP nếu có mạng nội bộ LAN) để chuyển file cài đặt Docker, file my_images_backup.tar và file docker-compose.yml lên máy chủ thật.
+
+
+---
+
+**Bước 4: Cài đặt Docker Engine và Giải nén (Load) Image trên Máy chủ**
+
+- Cài đặt Docker Engine bằng các gói cài đặt offline đã chuẩn bị.  
+- Sau khi Docker trên máy chủ sẵn sàng, tiến hành nạp lại các Image từ file nén vào bộ nhớ của Docker thông qua lệnh docker load.
+- Lệnh thực hiện:  
+     *docker load -i my_images_backup.tar*
+- Kiểm tra lại bằng lệnh docker images trên máy chủ để chắc chắn các image đã xuất hiện đầy đủ.  
+ 
+
+
+  ---
+
+
+  **Bước 5: Khởi chạy hệ thống bằng Docker Compose**
+
+  - Di chuyển vào thư mục chứa file docker-compose.yml trên máy chủ.
+  - Chạy lệnh docker compose up -d để khởi động lại toàn bộ hệ thống. Docker Compose sẽ tự động nhận diện các Image đã có sẵn trong máy chủ mà không cần kết nối ra Internet để tải lại.    
+  
+
+
+
+
+
+
+
+## 2. PHẦN THỰC HÀNH : Hệ thống Monitor & Alert Realtime
