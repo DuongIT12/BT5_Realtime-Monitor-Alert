@@ -134,3 +134,96 @@
 
 
 ## 2. PHẦN THỰC HÀNH : Hệ thống Monitor & Alert Realtime
+- Ta tạo một dự án tên "Realtime_monitor"
+- Cấu trúc thư mục như sau :
+  realtime_monitor/  
+├── docker-compose.yml  
+├── flask_api/  
+│   ├── Dockerfile  
+│   ├── requirements.txt  
+│   └── app.py  
+└── frontend/  
+    └── index.html  
+
+##### BƯỚC 1: FILE CẤU HÌNH TỔNG THỂ docker-compose.yml    
+<img width="1252" height="768" alt="image" src="https://github.com/user-attachments/assets/c9c15741-4bed-45e6-a709-8b1b81b5f3a6" />   
+
+
+##### BƯỚC 2: XÂY DỰNG FLASK API (flask_api/)    
+- Thành phần này đảm nhận vai trò kết nối vào MariaDB để lấy giá trị mới nhất rồi trả ra API định dạng JSON cho giao diện gọi.
+  1. File flask_api/requirements.txt:
+  <img width="598" height="186" alt="image" src="https://github.com/user-attachments/assets/8b548cfa-c14b-4c63-83fc-dec27f09c8a2" />  
+
+  2. File flask_api/app.py:
+  <img width="1178" height="746" alt="image" src="https://github.com/user-attachments/assets/e243bd1a-4530-4be5-b9fd-42e85a9875da" />  
+
+  3. File flask_api/Dockerfile:
+  <img width="669" height="376" alt="image" src="https://github.com/user-attachments/assets/c6213fa3-e2b6-4fb7-b4e9-d6004b23a6ad" />
+
+##### BƯỚC 3: CẤU HÌNH NODE-RED (http://localhost:1880)     
+**Cài đặt thêm các moddul trong Node-RED**  
+1. node-red-node-mysql (Để kết nối và lưu dữ liệu tức thời vào MariaDB).  
+2. node-red-contrib-influxdb (Để kết nối và lưu lịch sử vào InfluxDB).  
+3. node-red-contrib-telegrambot (Để cấu hình gửi cảnh báo qua Bot Telegram).
+- Nhấn nút Install ngay cạnh module đó để hệ thống tự động tải về. Sau khi cài xong, các node mới sẽ xuất hiện ở thanh công cụ bên trái.  
+<img width="964" height="599" alt="image" src="https://github.com/user-attachments/assets/dabf8f91-da09-483f-b508-dddd3123f943" />  
+
+
+---
+
+<img width="1904" height="975" alt="image" src="https://github.com/user-attachments/assets/1e75ac9d-d3e3-4b36-8f01-a6edd01d177f" />       
+1. Khởi tạo Database ban đầu trong MariaDB: Kéo 1 node **inject** nối vào node mysql để chạy câu lệnh tạo bảng:
+<img width="791" height="755" alt="image" src="https://github.com/user-attachments/assets/c0d21460-83a9-4ef5-834c-f36dfc70137b" />      
+
+3. Crawl dữ liệu động: *Dùng node inject cấu hình lặp lại (Repeat) mỗi 5 giây.*   
+   - Nối vào node http request để lấy dữ liệu. Bạn có thể gọi API giá Bitcoin thực tế từ CoinGecko: *https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd*   
+      <img width="718" height="730" alt="Untitled14" src="https://github.com/user-attachments/assets/741db569-fdd8-46e2-9897-53efc0021081" />    
+
+4. Lưu trữ dữ liệu đồng thời vào 2 DB:  
+
+   - Nhánh MariaDB (Giá trị tức thời): Sử dụng một node function để chuyển payload thành câu lệnh SQL cập nhật đè:    
+        + *Cấu hình trong MARIADB*       
+          <img width="709" height="807" alt="image" src="https://github.com/user-attachments/assets/646dbf87-e097-4248-a4b2-aa4bbcd5e72a" />  
+
+   - Nhánh InfluxDB (Lịch sử): Nối payload vào thẳng node influxdb out để ghi nhận dữ liệu theo chuỗi thời gian (Time-series).
+        + *Cấu hình tỏng InfluxDB:*    
+          <img width="749" height="748" alt="image" src="https://github.com/user-attachments/assets/140d1c9e-0faa-4624-828d-be97134d202e" />   
+
+5. Bắt giá trị bất thường & Gửi Alert Telegram:      
+- Tạo bot với **@BotFather** trên Telegram   
+  <img width="722" height="657" alt="image" src="https://github.com/user-attachments/assets/2e380d13-cc89-4676-a7c1-578719579632" />
+
+     - Tạo 1 node function để check khoảng [A..B].          
+     - Thêm Bot của bạn và ID [Của bạn] vào một nhóm Telegram chung. Nối đầu ra của node function trên vào node Telegram Sender để bắn thông báo trực tiếp vào nhóm.       + *Cấu hình bot telegram*   
+   <img width="1012" height="714" alt="Untitled13" src="https://github.com/user-attachments/assets/fe0712c5-4dc5-465f-be30-867643d3ae71" />  
+
+##### BƯỚC 4: THIẾT KẾ FRONT-END (frontend/index.html)   
+Giao diện sẽ chạy trên Nginx (Cổng 8080)----> Setup cổng như nào tuỳ bạn. Nó sẽ tự động gọi API của Flask sau mỗi 2 giây để hiển thị giá realtime, đồng thời nhúng Grafana Dashboard qua thẻ iframe.
+<img width="1301" height="759" alt="image" src="https://github.com/user-attachments/assets/73c9b656-6333-4039-accb-f08c5ab34a00" />
+
+
+##### BƯỚC 5: KHỞI CHẠY
+- Bây giờ bạn mở Terminal trên Ubuntu tại thư mục dự án và tiến hành chạy lệnh:
+1. Khởi động hệ thống: **docker compose up -d --build**   
+<img width="1903" height="818" alt="image" src="https://github.com/user-attachments/assets/08eaedb8-45a9-4ec6-a76c-8841d32f59e8" />
+
+2. Cấu hình trên GaraFana  
+<img width="1899" height="1026" alt="image" src="https://github.com/user-attachments/assets/bcd1790a-1184-47ea-8715-49e7119e8e28" />
+
+#### KẾT QUẢ:
+- 1. Các thông số trên grafana
+     <img width="1404" height="515" alt="image" src="https://github.com/user-attachments/assets/59a16008-0624-4440-9213-8cc45852c866" />
+
+- 2. Web cấu hình qua Ngix
+<img width="1883" height="916" alt="image" src="https://github.com/user-attachments/assets/089a3829-1b03-49d1-b98d-0dc55268471b" />
+
+- 3. Tin nhắn đẩy về Telegram mỗi 10s được update 1 lần:
+  <img width="899" height="940" alt="image" src="https://github.com/user-attachments/assets/09fe8e43-ac3e-4a09-bb36-869ba8480b98" />
+
+
+
+
+
+
+#####
+
