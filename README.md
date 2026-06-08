@@ -221,9 +221,53 @@ Giao diện sẽ chạy trên Nginx (Cổng 8080)----> Setup cổng như nào tu
   <img width="899" height="940" alt="image" src="https://github.com/user-attachments/assets/09fe8e43-ac3e-4a09-bb36-869ba8480b98" />
 
 
+#### Backup - Wipe - Restore (Sao lưu - Xóa sạch - Khôi phục)
+
+##### BƯỚC 1: XUẤT TẤT CẢ CÁC IMAGES/CONTAINER RA FILE NÉN
+- Đầu tiên, tạo một thư mục tên là backup để chứa các file nén, sau đó tiến hành xuất (save) các image hiện tại của hệ thống ra file .tar:
+ **1. Tạo thư mục chứa file backup**
+mkdir -p backup  
+
+ **2. Xuất các Image của 6 dịch vụ ra thành các file nén .tar riêng biệt**
+docker save -o backup/mariadb_monitor.tar mariadb:10.6   
+docker save -o backup/influxdb_monitor.tar influxdb:1.8   
+docker save -o backup/nodered_monitor.tar nodered/node-red:latest  
+docker save -o backup/grafana_monitor.tar grafana/grafana:latest  
+docker save -o backup/flask_api_monitor.tar realtime_monitor-flask_api_monitor:latest   
+docker save -o backup/nginx_server.tar nginx:alpine   
+
+- Thực hiện đóng gói và xuất toàn bộ 6 Docker Images của hệ thống ra các file lưu trữ cục bộ định dạng .tar bằng lệnh docker save để chuẩn bị cho quá trình di chuyển hoặc sao lưu offline."
+<img width="1146" height="435" alt="image" src="https://github.com/user-attachments/assets/0ed15b82-85b4-434a-98cd-21395d7e403e" />
+
+---
+
+##### 🛠️ BƯỚC 2: XÓA SẠCH SÀNH SANH MỌI CONTAINER ĐANG CHẠY  
+- Bây giờ, tiến hành xóa cưỡng bức toàn bộ cụm container để đưa hệ thống về trạng thái trống rỗng  
+ **1. Dừng và xóa toàn bộ các container trong cụm docker-compose**       
+docker compose down  
+
+**2. Xóa sạch tận gốc các Docker Images gốc đã lưu trên máy để ép hệ thống phải load từ file nén**     
+docker rmi mariadb:10.6 influxdb:1.8 nodered/node-red:latest grafana/grafana:latest realtime_monitor-flask_api_monitor:latest nginx:alpine  
+- Tiến hành hạ toàn bộ hệ thống và xóa sạch các container cũng như xóa image gốc bằng lệnh docker compose down và docker rmi nhằm giả lập tình huống máy chủ trống."
+<img width="1058" height="437" alt="image" src="https://github.com/user-attachments/assets/e5990e20-e6dc-4cad-90a6-73590cf1c892" />
+
+---
 
 
+##### 🛠️ BƯỚC 3: LOAD LẠI TỪ FILE NÉN VÀ KHÔI PHỤC HỆ THỐNG
 
+- Cuối cùng, nạp lại toàn bộ dữ liệu từ các file nén .tar đã tạo ở bước 1 vào lại Docker:
+ **1. Load lại lần lượt 6 file nén vào Docker Engine**  
+docker load -i backup/mariadb_monitor.tar  
+docker load -i backup/influxdb_monitor.tar  
+docker load -i backup/nodered_monitor.tar   
+docker load -i backup/grafana_monitor.tar   
+docker load -i backup/flask_api_monitor.tar   
+docker load -i backup/nginx_server.tar   
 
-#####
+**2. Khởi chạy lại toàn bộ cụm dịch vụ từ các image vừa khôi phục**  
+docker compose up -d   
+- Sử dụng lệnh docker load để tái nạp lại các dịch vụ từ file nén .tar và dùng docker compose up -d để khôi phục toàn bộ ứng dụng giám sát hoạt động bình thường mà không cần kết nối Internet."  
+<img width="1161" height="598" alt="image" src="https://github.com/user-attachments/assets/def32524-50fe-4049-9074-46663f2d4e75" />
+
 
